@@ -18,7 +18,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Find ZIP file
-        id: zip
         run: |
           ZIP_FILE=$(find . -maxdepth 1 -type f -name "*.zip" | head -n 1)
 
@@ -35,24 +34,32 @@ jobs:
           mkdir -p extracted
           unzip -q "$ZIP_FILE" -d extracted
 
-      - name: Move project to repository root
+      - name: Detect project root
         run: |
-          shopt -s dotglob
+          shopt -s dotglob nullglob
 
           entries=(extracted/*)
 
           if [ ${#entries[@]} -eq 1 ] && [ -d "${entries[0]}" ]; then
             echo "ZIP contains one root folder: ${entries[0]}"
-            cp -a "${entries[0]}"/. .
+            echo "PROJECT_ROOT=${entries[0]}" >> "$GITHUB_ENV"
           else
-            echo "ZIP contains files/folders directly."
-            cp -a extracted/. .
+            echo "ZIP contains files directly."
+            echo "PROJECT_ROOT=extracted" >> "$GITHUB_ENV"
           fi
 
-      - name: Remove ZIP and temporary files
+      - name: Copy project files
         run: |
-          rm -rf extracted
+          mkdir -p .github/workflows
+
+          rsync -a \
+            --exclude='.github/workflows/' \
+            "$PROJECT_ROOT"/ ./
+
+      - name: Remove ZIP
+        run: |
           rm -f "$ZIP_FILE"
+          rm -rf extracted
 
       - name: Commit extracted project
         run: |
