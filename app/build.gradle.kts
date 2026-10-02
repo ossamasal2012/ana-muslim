@@ -31,8 +31,8 @@ val versionProps = Properties().apply {
     if (versionPropsFile.exists()) {
         versionPropsFile.inputStream().use { load(it) }
     } else {
-        setProperty("VERSION_CODE", "1")
-        setProperty("VERSION_NAME", "1.0")
+        setProperty("VERSION_CODE", "5")
+        setProperty("VERSION_NAME", "1.5")
     }
 }
 val appVersionCode = versionProps.getProperty("VERSION_CODE").trim().toInt()
