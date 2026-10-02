@@ -2,7 +2,6 @@ package com.anamuslim.app.data.update
 
 import android.content.Context
 import com.anamuslim.app.BuildConfig
-import com.anamuslim.app.data.quran.NetworkModule
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
@@ -40,12 +39,12 @@ class UpdateRepository(private val context: Context) {
                 .header("Pragma", "no-cache")
                 .build()
 
-            val response = NetworkModule.noCacheHttpClient.newCall(request).execute()
+            val response = UpdateNetwork.noCacheHttpClient.newCall(request).execute()
             if (!response.isSuccessful) {
                 return@withContext UpdateCheckResult.Failed("http_${response.code}")
             }
             val bodyText = response.body?.string() ?: return@withContext UpdateCheckResult.Failed("empty_body")
-            val info = NetworkModule.json.decodeFromString(VersionInfo.serializer(), bodyText)
+            val info = UpdateNetwork.json.decodeFromString(VersionInfo.serializer(), bodyText)
 
             val installedVersionCode = BuildConfig.VERSION_CODE // القيمة الحقيقية الوحيدة الموثوقة
 

@@ -4,8 +4,6 @@ import android.content.Context
 import com.anamuslim.app.data.hijri.ShiaOccasionsRepository
 import com.anamuslim.app.data.prayertimes.LocationHelper
 import com.anamuslim.app.data.prayertimes.PrayerTimesRepository
-import com.anamuslim.app.data.quran.NetworkModule
-import com.anamuslim.app.data.quran.QuranRepository
 import com.anamuslim.app.data.settings.SettingsRepository
 import com.anamuslim.app.data.tasbih.TasbihRepository
 import com.anamuslim.app.data.update.UpdateRepository
@@ -22,7 +20,6 @@ object ServiceLocator {
 
     @Volatile private var settingsRepository: SettingsRepository? = null
     @Volatile private var prayerTimesRepository: PrayerTimesRepository? = null
-    @Volatile private var quranRepository: QuranRepository? = null
     @Volatile private var tasbihRepository: TasbihRepository? = null
     @Volatile private var updateRepository: UpdateRepository? = null
     @Volatile private var shiaOccasionsRepository: ShiaOccasionsRepository? = null
@@ -38,15 +35,6 @@ object ServiceLocator {
                 settings = settings(context),
                 locationHelper = LocationHelper(context.applicationContext)
             ).also { prayerTimesRepository = it }
-        }
-
-    fun quran(context: Context): QuranRepository =
-        quranRepository ?: synchronized(this) {
-            quranRepository ?: QuranRepository(
-                context = context.applicationContext,
-                api = NetworkModule.quranApi,
-                settings = settings(context)
-            ).also { quranRepository = it }
         }
 
     fun tasbih(context: Context): TasbihRepository =

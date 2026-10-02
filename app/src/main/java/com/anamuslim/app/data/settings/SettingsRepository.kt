@@ -15,7 +15,6 @@ private val Context.dataStore by preferencesDataStore(name = "ana_muslim_setting
 /**
  * مستودع مركزي لكل الإعدادات التي يجب أن تبقى محفوظة حتى لو أُغلق التطبيق:
  * - تفعيل/إيقاف تنبيه الأذان لكل صلاة (افتراضياً الكل مفعّل)
- * - آخر صفحة قرآن قرأها المستخدم + تفعيل/إيقاف الحفظ التلقائي
  * - الموقع الجغرافي المحفوظ لحساب مواقيت الصلاة
  */
 class SettingsRepository(private val context: Context) {
@@ -26,9 +25,6 @@ class SettingsRepository(private val context: Context) {
         val ASR_ENABLED = booleanPreferencesKey("adhan_asr_enabled")
         val MAGHRIB_ENABLED = booleanPreferencesKey("adhan_maghrib_enabled")
         val ISHA_ENABLED = booleanPreferencesKey("adhan_isha_enabled")
-
-        val QURAN_AUTOSAVE_ENABLED = booleanPreferencesKey("quran_autosave_enabled")
-        val QURAN_LAST_PAGE = intPreferencesKey("quran_last_page")
 
         val LOCATION_LAT = doublePreferencesKey("location_lat")
         val LOCATION_LNG = doublePreferencesKey("location_lng")
@@ -52,31 +48,6 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setPrayerAdhanEnabled(prayer: Prayer, enabled: Boolean) {
         context.dataStore.edit { it[prayer.key] = enabled }
-    }
-
-    val quranAutoSaveEnabled: Flow<Boolean> =
-        context.dataStore.data.map { it[Keys.QURAN_AUTOSAVE_ENABLED] ?: true }
-
-    suspend fun setQuranAutoSaveEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[Keys.QURAN_AUTOSAVE_ENABLED] = enabled }
-    }
-
-    val quranLastPage: Flow<Int> =
-        context.dataStore.data.map { it[Keys.QURAN_LAST_PAGE] ?: 1 }
-
-    /** يحفظ آخر صفحة قرأها المستخدم، فقط إن كان الحفظ التلقائي مفعّلاً. */
-    suspend fun saveQuranLastPageIfEnabled(page: Int) {
-        context.dataStore.edit { prefs ->
-            val autoSaveOn = prefs[Keys.QURAN_AUTOSAVE_ENABLED] ?: true
-            if (autoSaveOn) {
-                prefs[Keys.QURAN_LAST_PAGE] = page
-            }
-        }
-    }
-
-    /** زر "تصفير سجل الحفظ": يعيد آخر صفحة محفوظة إلى صفحة البداية (1) فوراً. */
-    suspend fun resetQuranSavedPage() {
-        context.dataStore.edit { it[Keys.QURAN_LAST_PAGE] = 1 }
     }
 
     data class SavedLocation(

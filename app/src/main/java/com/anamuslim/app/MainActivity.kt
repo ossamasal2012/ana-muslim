@@ -14,6 +14,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import com.anamuslim.app.alarm.AlarmScheduler
 import com.anamuslim.app.data.update.ApkDownloadManagerHelper
@@ -26,6 +29,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        enableImmersiveMode()
 
         // إن وُجد تحديث اكتمل تنزيله والتطبيق كان خارجاً وقتها، نثبّته تلقائياً الآن
         val downloadHelper = ApkDownloadManagerHelper(this)
@@ -58,9 +62,24 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        enableImmersiveMode()
         // نعيد جدولة الأذان عند كل عودة للتطبيق: يغطي حالة العودة من شاشة منح إذن
         // "المنبهات الدقيقة" أو تغيير الموقع، والعملية آمنة التكرار (نفس المعرّفات تُحدَّث لا تتضاعف)
         lifecycleScope.launch { AlarmScheduler.rescheduleAll(applicationContext) }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) enableImmersiveMode()
+    }
+
+    /** يخفي شريطي الحالة والتنقل دائماً؛ يمكن للنظام إظهارهما مؤقتاً بالسحب فقط. */
+    private fun enableImmersiveMode() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
     }
 
     /** يفتح صفحة إعدادات النظام لمنح إذن "المنبهات الدقيقة" إن لم يكن ممنوحاً (أندرويد 12+). */

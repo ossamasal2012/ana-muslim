@@ -2,186 +2,183 @@
 
 package com.anamuslim.app.ui.quran
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Color
+import android.graphics.pdf.PdfRenderer
+import android.os.ParcelFileDescriptor
+import android.widget.ImageView
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.viewinterop.AndroidView
 import com.anamuslim.app.R
-import com.anamuslim.app.data.quran.QURAN_TOTAL_PAGES
-import com.anamuslim.app.data.quran.QuranPageCache
-import kotlinx.coroutines.launch
+import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+private const val QURAN_PDF_ASSET = "quran.pdf"
 
 @Composable
-fun QuranScreen(viewModel: QuranViewModel = viewModel()) {
-    val state by viewModel.uiState.collectAsState()
+fun QuranScreen() {
+    val context = LocalContext.current.applicationContext
+    var documentState by remember { mutableStateOf<PdfDocumentState>(PdfDocumentState.Loading) }
+    var currentPage by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(context) {
+        documentState = loadPdfDocument(context)
+    }
+
+    DisposableEffect(documentState) {
+        onDispose {
+            (documentState as? PdfDocumentState.Ready)?.document?.close()
+        }
+    }
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(title = { Text(stringResource(R.string.nav_quran)) })
 
-        // ننتظر اكتمال استرجاع "آخر صفحة محفوظة" قبل إنشاء الـ Pager حتى يبدأ
-        // من الصفحة الصحيحة مباشرة، بدل أن يومض أولاً على الصفحة 1
-        if (state.pageData == null && state.errorMessage == null) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            return
-        }
-
-        val pagerState = rememberPagerState(
-            initialPage = state.currentPage - 1,
-            pageCount = { QURAN_TOTAL_PAGES }
-        )
-        val scope = rememberCoroutineScope()
-
-        LaunchedEffect(pagerState.currentPage) {
-            if (pagerState.currentPage + 1 != state.currentPage) {
-                viewModel.goToPage(pagerState.currentPage + 1)
-            }
-        }
-
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.weight(1f)
-        ) { pageIndex ->
-            val pageNumber = pageIndex + 1
-            if (pageNumber == state.currentPage && state.pageData != null) {
-                QuranPageContent(state.pageData!!)
-            } else if (pageNumber == state.currentPage && state.errorMessage != null) {
-                QuranPageError(onRetry = { viewModel.goToPage(pageNumber) })
-            } else {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            }
-        }
-
-        QuranBottomBar(
-            pageNumber = state.currentPage,
-            juzNumber = state.pageData?.juzNumber ?: 1,
-            onPrev = { scope.launch { pagerState.animateScrollToPage((state.currentPage - 2).coerceIn(0, QURAN_TOTAL_PAGES - 1)) } },
-            onNext = { scope.launch { pagerState.animateScrollToPage(state.currentPage.coerceIn(0, QURAN_TOTAL_PAGES - 1)) } }
-        )
-    }
-}
-
-@Composable
-private fun QuranPageContent(page: QuranPageCache) {
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp)
-    ) {
-        val builder = StringBuilder()
-        page.ayahs.forEachIndexed { idx, ayah ->
-            if (ayah.isNewSurahStart) {
-                if (builder.isNotEmpty()) {
-                    RenderAyahBlock(builder.toString())
-                    builder.clear()
+        when (val state = documentState) {
+            PdfDocumentState.Loading -> LoadingPdf()
+            is PdfDocumentState.Missing -> MissingPdf()
+            is PdfDocumentState.Error -> PdfError()
+            is PdfDocumentState.Ready -> {
+                val lastPage = state.document.renderer.pageCount - 1
+                val displayedPage = currentPage.coerceIn(0, lastPage)
+                AndroidView(
+                    factory = { PdfPageImageView(it) },
+                    modifier = Modifier.weight(1f),
+                    update = { it.showPage(state.document.renderer, displayedPage) }
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = { currentPage = displayedPage - 1 }, enabled = displayedPage > 0) {
+                        Text(stringResource(R.string.quran_previous_page))
+                    }
+                    Text(stringResource(R.string.quran_page_number, displayedPage + 1))
+                    TextButton(onClick = { currentPage = displayedPage + 1 }, enabled = displayedPage < lastPage) {
+                        Text(stringResource(R.string.quran_next_page))
+                    }
                 }
-                Spacer(Modifier.height(12.dp))
-                SurahHeader(ayah.surahName)
-                Spacer(Modifier.height(12.dp))
             }
-            builder.append(ayah.text)
-            builder.append(" \u06DD") // رمز نهاية آية بسيط (فاصلة قرآنية دائرية تقليدية)
-            builder.append(toArabicDigits(ayah.numberInSurah))
-            builder.append("  ")
         }
-        if (builder.isNotEmpty()) RenderAyahBlock(builder.toString())
-
-        Spacer(Modifier.height(24.dp))
-        Text(
-            stringResource(R.string.quran_attribution),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Text(
-            stringResource(R.string.quran_attribution_api),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Text(
-            stringResource(R.string.quran_attribution_license),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(12.dp))
     }
 }
 
 @Composable
-private fun RenderAyahBlock(text: String) {
+private fun LoadingPdf() = Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    CircularProgressIndicator()
+}
+
+@Composable
+private fun MissingPdf() = PdfMessage(R.string.quran_pdf_missing)
+
+@Composable
+private fun PdfError() = PdfMessage(R.string.quran_pdf_error)
+
+@Composable
+private fun PdfMessage(messageRes: Int) = Box(
+    modifier = Modifier.fillMaxSize().padding(24.dp),
+    contentAlignment = Alignment.Center
+) {
     Text(
-        text = text,
-        fontFamily = com.anamuslim.app.ui.theme.QuranFontFamily,
-        fontSize = 22.sp,
-        lineHeight = 42.sp,
-        textAlign = TextAlign.Justify,
-        color = MaterialTheme.colorScheme.onSurface
+        text = stringResource(messageRes),
+        style = MaterialTheme.typography.bodyLarge
     )
 }
 
-@Composable
-private fun SurahHeader(name: String) {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium)
-            .padding(vertical = 10.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            name,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
-        )
+private sealed interface PdfDocumentState {
+    data object Loading : PdfDocumentState
+    data object Missing : PdfDocumentState
+    data object Error : PdfDocumentState
+    data class Ready(val document: PdfDocument) : PdfDocumentState
+}
+
+private class PdfDocument(
+    val descriptor: ParcelFileDescriptor,
+    val renderer: PdfRenderer
+) : AutoCloseable {
+    override fun close() {
+        renderer.close()
+        descriptor.close()
     }
 }
 
-@Composable
-private fun QuranPageError(onRetry: () -> Unit) {
-    Column(
-        Modifier.fillMaxSize().padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(stringResource(R.string.quran_no_internet_first_time), textAlign = TextAlign.Center)
-        Spacer(Modifier.height(16.dp))
-        Button(onClick = onRetry) { Text(stringResource(R.string.quran_retry)) }
+private suspend fun loadPdfDocument(context: Context): PdfDocumentState = withContext(Dispatchers.IO) {
+    try {
+        val assetFile = File(context.cacheDir, QURAN_PDF_ASSET)
+        if (context.assets.list("")?.contains(QURAN_PDF_ASSET) != true) {
+            return@withContext PdfDocumentState.Missing
+        }
+        context.assets.open(QURAN_PDF_ASSET).use { input ->
+            assetFile.outputStream().use(input::copyTo)
+        }
+        val descriptor = ParcelFileDescriptor.open(assetFile, ParcelFileDescriptor.MODE_READ_ONLY)
+        PdfDocumentState.Ready(PdfDocument(descriptor, PdfRenderer(descriptor)))
+    } catch (_: Exception) {
+        PdfDocumentState.Error
     }
 }
 
-@Composable
-private fun QuranBottomBar(pageNumber: Int, juzNumber: Int, onPrev: () -> Unit, onNext: () -> Unit) {
-    Surface(tonalElevation = 3.dp) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextButton(onClick = onPrev, enabled = pageNumber < QURAN_TOTAL_PAGES) { Text("‹ " + stringResource(R.string.quran_page_number, pageNumber + 1)) }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(stringResource(R.string.quran_page_number, pageNumber), style = MaterialTheme.typography.titleMedium)
-                Text(stringResource(R.string.quran_juz_number, juzNumber), style = MaterialTheme.typography.labelMedium)
-            }
-            TextButton(onClick = onNext, enabled = pageNumber > 1) { Text(stringResource(R.string.quran_page_number, pageNumber - 1) + " ›") }
+private class PdfPageImageView(context: Context) : ImageView(context) {
+    private var renderer: PdfRenderer? = null
+    private var pageIndex: Int = 0
+
+    init {
+        setBackgroundColor(Color.WHITE)
+        scaleType = ScaleType.FIT_CENTER
+    }
+
+    fun showPage(renderer: PdfRenderer, pageIndex: Int) {
+        this.renderer = renderer
+        this.pageIndex = pageIndex
+        renderPage()
+    }
+
+    override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
+        super.onSizeChanged(width, height, oldWidth, oldHeight)
+        renderPage()
+    }
+
+    private fun renderPage() {
+        val activeRenderer = renderer ?: return
+        if (width <= 0 || height <= 0 || pageIndex !in 0 until activeRenderer.pageCount) return
+
+        activeRenderer.openPage(pageIndex).use { page ->
+            val scale = minOf(width.toFloat() / page.width, height.toFloat() / page.height)
+            val bitmap = Bitmap.createBitmap(
+                (page.width * scale).toInt().coerceAtLeast(1),
+                (page.height * scale).toInt().coerceAtLeast(1),
+                Bitmap.Config.ARGB_8888
+            )
+            bitmap.eraseColor(Color.WHITE)
+            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+            setImageBitmap(bitmap)
         }
     }
 }
-
-private val arabicDigits = charArrayOf('٠','١','٢','٣','٤','٥','٦','٧','٨','٩')
-private fun toArabicDigits(n: Int): String = n.toString().map { c -> if (c.isDigit()) arabicDigits[c - '0'] else c }.joinToString("")

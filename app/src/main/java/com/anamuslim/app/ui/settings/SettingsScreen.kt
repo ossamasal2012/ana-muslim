@@ -24,7 +24,6 @@ import com.anamuslim.app.ui.update.UpdateDialogHost
 fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    var showResetConfirm by remember { mutableStateOf(false) }
     var updateResult by remember { mutableStateOf<UpdateCheckResult?>(null) }
     var lastCheckMessage by remember { mutableStateOf<String?>(null) }
 
@@ -63,31 +62,8 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
             }
 
             Divider(Modifier.padding(vertical = 12.dp))
-            SectionTitle(stringResource(R.string.settings_section_quran))
-
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.settings_quran_autosave_title), style = MaterialTheme.typography.titleMedium)
-                    Text(stringResource(R.string.settings_quran_autosave_desc), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Switch(checked = state.quranAutoSave, onCheckedChange = { viewModel.setQuranAutoSave(it) })
-            }
-
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(onClick = { showResetConfirm = true }, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.settings_quran_reset_title))
-            }
-            Text(stringResource(R.string.settings_quran_reset_desc), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-            Divider(Modifier.padding(vertical = 12.dp))
             SectionTitle(stringResource(R.string.settings_section_about))
             Text(stringResource(R.string.settings_current_version, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodyMedium)
-
-            Spacer(Modifier.height(8.dp))
-            Text(stringResource(R.string.licenses_title), style = MaterialTheme.typography.titleMedium)
-            Text(stringResource(R.string.licenses_tanzil_notice), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(stringResource(R.string.quran_attribution_api), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(stringResource(R.string.licenses_font), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             Spacer(Modifier.height(8.dp))
             Button(
@@ -114,22 +90,6 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
             }
         }
-    }
-
-    if (showResetConfirm) {
-        AlertDialog(
-            onDismissRequest = { showResetConfirm = false },
-            title = { Text(stringResource(R.string.settings_quran_reset_title)) },
-            text = { Text(stringResource(R.string.settings_quran_reset_confirm)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.resetQuranSavedPage()
-                    showResetConfirm = false
-                    lastCheckMessage = context.getString(R.string.settings_quran_reset_done)
-                }) { Text(stringResource(R.string.ok)) }
-            },
-            dismissButton = { TextButton(onClick = { showResetConfirm = false }) { Text(stringResource(R.string.cancel)) } }
-        )
     }
 
     (updateResult as? UpdateCheckResult.UpdateAvailable)?.let { available ->

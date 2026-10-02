@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- الإنترنت: لجلب صفحات القرآن أول مرة، وتحديد الموقع عبر الشبكة، وفحص التحديثات -->
+    <!-- الإنترنت: لتحديد الموقع عبر الشبكة وفحص التحديثات -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
