@@ -34,21 +34,12 @@
     <string name="calculation_method_jafari">الحساب الجعفري (الشيعي) — معهد ليفا، قُم</string>
     <string name="asr_shadow_length">وقت العصر عند تساوي ظل الشيء مع طوله (المذهب الجعفري)</string>
 
-    <!-- القرآن الكريم -->
-    <string name="quran_loading_page">جارٍ تحميل الصفحة…</string>
+    <!-- قارئ المصحف PDF -->
     <string name="quran_page_number">صفحة %1$d</string>
-    <string name="quran_juz_number">الجزء %1$d</string>
-    <string name="quran_no_internet_first_time">هذه الصفحة تحتاج اتصالاً بالإنترنت أول مرة فقط لتحميلها، وبعدها تبقى محفوظة على جهازك للأبد</string>
-    <string name="quran_retry">إعادة المحاولة</string>
-    <string name="quran_resumed_from_page">تم فتح آخر صفحة قرأتها: صفحة %1$d</string>
-    <string name="quran_prev_page">الصفحة السابقة</string>
+    <string name="quran_previous_page">الصفحة السابقة</string>
     <string name="quran_next_page">الصفحة التالية</string>
-    <string name="quran_attribution">نص القرآن الكريم: Tanzil Project — Tanzil.net</string>
-    <string name="quran_attribution_api">يصل النص عبر واجهة Al Quran Cloud — alquran.cloud</string>
-    <string name="quran_attribution_license">رخصة النص: Creative Commons Attribution 3.0 — يُمنع تعديل النص</string>
-    <string name="licenses_tanzil_notice">Tanzil Quran Text — Copyright (C) 2007-2021 Tanzil Project — License: Creative Commons Attribution 3.0 — http://tanzil.net</string>
-    <string name="licenses_font">خط أميري قرآن (Amiri Quran) — Copyright 2010-2022 The Amiri Project Authors — SIL Open Font License 1.1</string>
-    <string name="licenses_title">المصادر والتراخيص</string>
+    <string name="quran_pdf_missing">ملف المصحف غير موجود. أضف الملف باسم quran.pdf إلى المسار app/src/main/assets/ ثم أعد بناء التطبيق.</string>
+    <string name="quran_pdf_error">تعذّر فتح ملف المصحف. تأكد من أن quran.pdf ملف PDF صالح ثم أعد بناء التطبيق.</string>
 
     <!-- السبحة الإلكترونية -->
     <string name="tasbih_add_new">إضافة تسبيحة جديدة</string>
@@ -84,13 +75,6 @@
     <string name="settings_title">الإعدادات</string>
     <string name="settings_section_adhan">إشعارات الأذان</string>
     <string name="settings_adhan_enable_all">فعّل أو أوقف تنبيه الأذان لكل صلاة على حدة</string>
-    <string name="settings_section_quran">القرآن الكريم</string>
-    <string name="settings_quran_autosave_title">حفظ آخر صفحة قرأتها تلقائياً</string>
-    <string name="settings_quran_autosave_desc">عند التعطيل، لن يتذكر التطبيق مكان توقفك</string>
-    <string name="settings_quran_reset_title">تصفير سجل آخر صفحة محفوظة</string>
-    <string name="settings_quran_reset_desc">يعيدك لصفحة البداية عند فتح القرآن لاحقاً</string>
-    <string name="settings_quran_reset_confirm">سيتم حذف آخر صفحة محفوظة والعودة لصفحة البداية. هل تريد المتابعة؟</string>
-    <string name="settings_quran_reset_done">تم تصفير سجل الحفظ</string>
     <string name="settings_section_location">الموقع</string>
     <string name="settings_change_location">تغيير الموقع / المدينة</string>
     <string name="settings_section_about">حول التطبيق</string>

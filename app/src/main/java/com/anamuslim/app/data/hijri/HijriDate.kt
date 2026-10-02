@@ -20,9 +20,10 @@ data class HijriDate(val year: Int, val month: Int, val day: Int) {
             "رجب", "شعبان", "رمضان", "شوال", "ذو القعدة", "ذو الحجة"
         )
 
-        /** يحوّل تاريخاً ميلادياً إلى هجري. */
+        /** يحوّل تاريخاً ميلادياً إلى هجري وفق التقويم الجعفري المعتمد في التطبيق. */
         fun fromGregorian(year: Int, month: Int, day: Int): HijriDate {
-            val jdn = gregorianToJdn(year, month, day)
+            // التصحيح المعتمد للتقويم الشيعي: التاريخ المحسوب هنا متأخر يوماً واحداً.
+            val jdn = gregorianToJdn(year, month, day) + 1
             return jdnToHijri(jdn)
         }
 
@@ -31,7 +32,8 @@ data class HijriDate(val year: Int, val month: Int, val day: Int) {
 
         /** يحوّل تاريخاً هجرياً إلى ميلادي (year, month, day) — مفيد لحساب "متى تأتي" مناسبة قادمة. */
         fun toGregorian(hYear: Int, hMonth: Int, hDay: Int): Triple<Int, Int, Int> {
-            val jdn = hijriToJdn(hYear, hMonth, hDay)
+            // نعكس تصحيح اليوم الواحد المطبق عند التحويل من الميلادي.
+            val jdn = hijriToJdn(hYear, hMonth, hDay) - 1
             return jdnToGregorian(jdn)
         }
 

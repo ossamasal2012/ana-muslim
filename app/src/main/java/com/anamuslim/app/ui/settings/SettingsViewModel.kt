@@ -19,8 +19,6 @@ data class SettingsUiState(
     val asrEnabled: Boolean = true,
     val maghribEnabled: Boolean = true,
     val ishaEnabled: Boolean = true,
-    val quranAutoSave: Boolean = true,
-    val updateStatus: String? = null,
     val isCheckingUpdate: Boolean = false
 )
 
@@ -46,9 +44,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 )
             }
         }
-        viewModelScope.launch {
-            settings.quranAutoSaveEnabled.collect { _uiState.value = _uiState.value.copy(quranAutoSave = it) }
-        }
     }
 
     fun setPrayerEnabled(prayer: SettingsRepository.Prayer, enabled: Boolean) {
@@ -57,10 +52,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             AlarmScheduler.rescheduleAll(getApplication())
         }
     }
-
-    fun setQuranAutoSave(enabled: Boolean) = viewModelScope.launch { settings.setQuranAutoSaveEnabled(enabled) }
-
-    fun resetQuranSavedPage() = viewModelScope.launch { settings.resetQuranSavedPage() }
 
     fun checkForUpdate(onResult: (UpdateCheckResult) -> Unit) {
         _uiState.value = _uiState.value.copy(isCheckingUpdate = true)
