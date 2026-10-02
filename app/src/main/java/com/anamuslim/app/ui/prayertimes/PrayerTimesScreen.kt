@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.anamuslim.app.ui.prayertimes
 
 import androidx.compose.foundation.layout.*
@@ -20,6 +22,8 @@ import com.anamuslim.app.data.prayertimes.PrayerTimesDisplay
 @Composable
 fun PrayerTimesScreen(viewModel: PrayerTimesViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
+    val times = state.times
+    val rows = if (times != null) prayerRows(times) else emptyList()
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(title = { Text(stringResource(R.string.app_name)) })
@@ -46,10 +50,8 @@ fun PrayerTimesScreen(viewModel: PrayerTimesViewModel = viewModel()) {
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
-            state.times?.let { times ->
-                items(prayerRows(times)) { row ->
-                    PrayerRow(row, isNext = row.name == state.next?.prayer)
-                }
+            items(rows) { row ->
+                PrayerRow(row, isNext = row.name == state.next?.prayer)
             }
         }
     }
@@ -99,14 +101,16 @@ private fun NextPrayerCard(state: PrayerTimesUiState) {
 private data class PrayerRowData(val name: PrayerName?, val label: String, val minute: Int)
 
 @Composable
-private fun prayerRows(times: PrayerTimesDisplay): List<PrayerRowData> = listOf(
-    PrayerRowData(PrayerName.FAJR, stringResource(R.string.prayer_fajr), times.fajrMinute),
-    PrayerRowData(null, stringResource(R.string.prayer_sunrise), times.sunriseMinute),
-    PrayerRowData(PrayerName.DHUHR, stringResource(R.string.prayer_dhuhr), times.dhuhrMinute),
-    PrayerRowData(PrayerName.ASR, stringResource(R.string.prayer_asr), times.asrMinute),
-    PrayerRowData(PrayerName.MAGHRIB, stringResource(R.string.prayer_maghrib), times.maghribMinute),
-    PrayerRowData(PrayerName.ISHA, stringResource(R.string.prayer_isha), times.ishaMinute)
-)
+private fun prayerRows(times: PrayerTimesDisplay): List<PrayerRowData> = with(times) {
+    listOf(
+        PrayerRowData(PrayerName.FAJR, stringResource(R.string.prayer_fajr), fajrMinute),
+        PrayerRowData(null, stringResource(R.string.prayer_sunrise), sunriseMinute),
+        PrayerRowData(PrayerName.DHUHR, stringResource(R.string.prayer_dhuhr), dhuhrMinute),
+        PrayerRowData(PrayerName.ASR, stringResource(R.string.prayer_asr), asrMinute),
+        PrayerRowData(PrayerName.MAGHRIB, stringResource(R.string.prayer_maghrib), maghribMinute),
+        PrayerRowData(PrayerName.ISHA, stringResource(R.string.prayer_isha), ishaMinute)
+    )
+}
 
 @Composable
 private fun prayerLabel(name: PrayerName): String = when (name) {
