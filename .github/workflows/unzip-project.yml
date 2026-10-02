@@ -1,0 +1,119 @@
+name: Unzip Project Archive
+
+# يعمل تلقائياً كلما وصل أي ملف .zip (بأي اسم، بأي مجلد داخل المستودع) عبر Push،
+# أو يدوياً من تبويب Actions → Run workflow.
+on:
+  push:
+    paths:
+      - "**/*.zip"
+  workflow_dispatch: {}
+
+# لازم "Read and write permissions" مفعّلة من: Settings → Actions → General →
+# Workflow permissions، وإلا خطوة الـ push بالأسفل سترفض (مرة واحدة فقط تضبطها).
+permissions:
+  contents: write
+
+jobs:
+  unzip-and-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ============================================================
+      # الخطوة 1: نكتشف أي ملفات .zip موجودة حالياً بالمستودع (أي مكان،
+      # أي اسم). إن لم يوجد أي ملف، نخرج بهدوء دون فعل أي شيء —
+      # وهذا بالذات ما يمنع أي تكرار لا نهائي (راجع الشرح بالأسفل).
+      # ============================================================
+      - name: Find zip archives in the repository
+        id: find
+        run: |
+          set -e
+          mapfile -t ZIPS < <(find . -type f -iname "*.zip" -not -path "./.git/*" | sort)
+          if [ "${#ZIPS[@]}" -eq 0 ]; then
+            echo "لا يوجد أي ملف zip بالمستودع حالياً — لا شيء لفعله."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "${ZIPS[@]}" > "$RUNNER_TEMP/zips.txt"
+          echo "ملفات zip المكتشفة للاستخراج:"
+          cat "$RUNNER_TEMP/zips.txt"
+
+      # ============================================================
+      # الخطوة 2: نستخرج كل أرشيف "طبيعياً" (نفس محتواه وهيكلته تماماً)
+      # داخل نفس المجلد الذي يوجد فيه ملف الـ zip بالضبط — تماماً كما لو
+      # فككت الضغط يدوياً بجهازك بنفس المكان. يُستبدل أي ملف قديم بنفس
+      # الاسم تلقائياً (-o). ثم نحذف ملف الـ zip نفسه بعد نجاح الاستخراج.
+      #
+      # حماية أمان مدمجة: أي ملف داخل الأرشيف اسمه يشبه مفتاح توقيع أو
+      # كلمة سر لا يُستخرج إطلاقاً، ويُسجَّل تحذير واضح به بدل تجاهله بصمت.
+      # ============================================================
+      - name: Extract every zip archive found (in place, overwrite, skip sensitive files)
+        if: steps.find.outputs.found == 'true'
+        run: |
+          set -e
+          EXCLUDES=(
+            "*.keystore" "*.jks" "*.pem" "*.key" "*.ppk" "id_rsa*"
+            "*password*" "*Password*" "*secret*" "*Secret*" "*.env" "*credentials*"
+          )
+          SKIPPED_LOG="$RUNNER_TEMP/skipped.txt"
+          : > "$SKIPPED_LOG"
+
+          while IFS= read -r zip; do
+            dir="$(dirname "$zip")"
+            echo "::group::استخراج: $zip  ->  $dir"
+
+            # نفحص محتوى الأرشيف أولاً لتسجيل أي ملف حساس محتمل قبل الاستخراج الفعلي
+            unzip -Z1 "$zip" > "$RUNNER_TEMP/listing.txt" || true
+            while IFS= read -r entry; do
+              base="$(basename "$entry")"
+              for pat in "${EXCLUDES[@]}"; do
+                case "$base" in
+                  $pat) echo "   $zip  ->  $entry" >> "$SKIPPED_LOG" ;;
+                esac
+              done
+            done < "$RUNNER_TEMP/listing.txt"
+
+            unzip -o "$zip" -d "$dir" -x "${EXCLUDES[@]}"
+            echo "::endgroup::"
+
+            echo "حذف الأرشيف بعد استخراجه بنجاح: $zip"
+            rm -f "$zip"
+          done < "$RUNNER_TEMP/zips.txt"
+
+          if [ -s "$SKIPPED_LOG" ]; then
+            echo "::warning::تم تجاهل ملفات تبدو حساسة (مفاتيح توقيع/كلمات سر محتملة) ولم تُستخرج إطلاقاً لحمايتك. أرسلها بقناة آمنة منفصلة، لا عبر git:"
+            cat "$SKIPPED_LOG"
+          fi
+
+      # ============================================================
+      # الخطوة 3: نحفظ النتيجة فقط إن تغيّر شيء فعلياً. هذا الشرط بالذات
+      # (لا شيء تغيّر = لا Commit) هو خط الدفاع الحقيقي ضد أي تكرار لا
+      # نهائي: حتى لو أُعيد تشغيل هذا العمل على نفس الحالة مرتين، في
+      # المرة الثانية لن يوجد أي ملف zip (حُذف بالخطوة 2) فينتهي العمل
+      # بالخطوة 1 دون أي Commit جديد، فلا يوجد ما يُحفّز تشغيلاً تالياً.
+      #
+      # لم أضع "[skip ci]" بنص الـ Commit عمداً: تركها يسمح لسير عمل
+      # البناء release.yml (إن وُجد بمشروعك) بالعمل تلقائياً فور وصول
+      # الملفات المُستخرجة — فتحصل فعلياً على: رفع zip ← استخراج تلقائي
+      # ← بناء تلقائي، بخطوة واحدة منك فقط، وهذا هو "السرعة" التي تريدها.
+      # ============================================================
+      - name: Commit and push extracted files (only if something actually changed)
+        if: steps.find.outputs.found == 'true'
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "لا تغييرات فعلية بعد الاستخراج — لا حاجة لأي Commit."
+            exit 0
+          fi
+          git commit -m "استخراج تلقائي لملف(ات) zip المرفوعة [unzip-project]"
+          git pull --rebase origin "${{ github.ref_name }}" || true
+          git push origin "HEAD:${{ github.ref_name }}"
