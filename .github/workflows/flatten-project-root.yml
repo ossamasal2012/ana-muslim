@@ -1,0 +1,54 @@
+name: Flatten ana-muslim-app folder to repo root
+
+# تشغيل يدوي فقط من تبويب Actions → اختر هذا العمل → Run workflow.
+# لا يعمل تلقائياً أبداً، ومُصمَّم لتشغيله مرة واحدة فقط لإصلاح التداخل الحالي.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  flatten:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Move everything out of ana-muslim-app/ into repo root
+        run: |
+          set -e
+          if [ ! -d "ana-muslim-app" ]; then
+            echo "لا يوجد مجلد ana-muslim-app بالجذر أصلاً — لا شيء لفعله (ربما نُفِّذ هذا العمل من قبل)."
+            exit 0
+          fi
+
+          shopt -s dotglob nullglob
+          for item in ana-muslim-app/*; do
+            base="$(basename "$item")"
+            if [ -e "$base" ]; then
+              echo "::warning::استبدال عنصر موجود مسبقاً بالجذر بنفس الاسم: $base"
+              rm -rf "$base"
+            fi
+            mv "$item" "$base"
+          done
+          rmdir ana-muslim-app
+
+          echo "محتوى الجذر بعد النقل:"
+          ls -la
+
+      - name: Commit and push (only if something actually changed)
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "لا تغييرات فعلية — لا حاجة لأي Commit."
+            exit 0
+          fi
+          git commit -m "نقل محتوى ana-muslim-app/ إلى جذر المستودع [flatten]"
+          git pull --rebase origin "${{ github.ref_name }}" || true
+          git push origin "HEAD:${{ github.ref_name }}"
