@@ -1,0 +1,19 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# ملفات البناء الناتجة داخل كل وحدة
+app/build/
+
+# لا ترفع أبداً ملف التوقيع (Keystore) أو كلمات المرور إلى المستودع العام —
+# يتم تمريره فقط عبر GitHub Secrets أثناء البناء الآلي
+*.jks
+*.keystore
+keystore.properties
