@@ -58,8 +58,9 @@ jobs:
         run: |
           set -e
           EXCLUDES=(
-            "*.keystore" "*.jks" "*.pem" "*.key" "*.ppk" "id_rsa*"
-            "*password*" "*Password*" "*secret*" "*Secret*" "*.env" "*credentials*"
+            "*keystore*" "*Keystore*" "*.jks" "*.pem" "*.key" "*.ppk" "*.p12" "*.pfx"
+            "id_rsa*" "id_ed25519*" "*password*" "*Password*" "*secret*" "*Secret*"
+            "*.env" "*credentials*" "*Credentials*"
           )
           SKIPPED_LOG="$RUNNER_TEMP/skipped.txt"
           : > "$SKIPPED_LOG"
