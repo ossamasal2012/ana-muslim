@@ -54,12 +54,12 @@ android {
         buildConfigField(
             "String",
             "UPDATE_VERSION_JSON_URL",
-            "\"https://github.com/YOUR_GITHUB_USERNAME/ana-muslim-app/releases/latest/download/version.json\""
+            "\"https://github.com/ossamasal2012/ana-muslim/releases/latest/download/version.json\""
         )
         buildConfigField(
             "String",
             "GITHUB_REPO_RELEASES_URL",
-            "\"https://github.com/YOUR_GITHUB_USERNAME/ana-muslim-app/releases/latest\""
+            "\"https://github.com/ossamasal2012/ana-muslim/releases/latest\""
         )
     }
 
