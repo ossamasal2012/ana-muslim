@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- نستثني ملفات القرآن المخزنة مؤقتاً من النسخ الاحتياطي لأنها كبيرة نسبياً
+         ويمكن إعادة تحميلها بسهولة، بينما نسمح بنسخ إعدادات المستخدم وعداد السبحة -->
+    <exclude domain="file" path="quran_cache/" />
+    <exclude domain="external" path="updates/" />
+</full-backup-content>

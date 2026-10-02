@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- الإنترنت: لجلب صفحات القرآن أول مرة، وتحديد الموقع عبر الشبكة، وفحص التحديثات -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- الموقع: لحساب مواعيد الصلاة بدقة حسب إحداثيات المستخدم -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <!-- الإشعارات (إلزامية بأندرويد 13 فما فوق) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- إعادة جدولة تنبيهات الأذان بعد إعادة تشغيل الجهاز -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- المنبهات الدقيقة (وقت الأذان بالضبط). USE_EXACT_ALARM يُمنح تلقائياً
+         لتطبيقات فئة الصلاة/المنبهات، ونضيف SCHEDULE_EXACT_ALARM كخط دفاع ثانٍ. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- تشغيل خدمة أمامية (Foreground Service) لتشغيل صوت الأذان حتى والتطبيق مغلق -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
+    <!-- تثبيت ملف APK الخاص بالتحديث تلقائياً -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!-- رؤية مثبّت الحزم النظامي على أندرويد 11 فما فوق لأغراض تثبيت التحديث -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="application/vnd.android.package-archive" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".AnaMuslimApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AnaMuslim"
+        android:localeConfig="@xml/locales_config">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.AnaMuslim.Splash"
+            android:configChanges="orientation|screenSize|keyboardHidden|uiMode"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- خدمة أمامية تشغّل صوت الأذان كاملاً وتعرض إشعاراً بزر إيقاف -->
+        <service
+            android:name=".alarm.AdhanPlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <!-- يستقبل تنبيه AlarmManager عند دخول وقت كل صلاة -->
+        <receiver
+            android:name=".alarm.AdhanAlarmReceiver"
+            android:exported="false" />
+
+        <!-- يعيد جدولة كل تنبيهات الصلاة بعد إعادة تشغيل الجهاز (تُصفَّر عند كل ريستارت) -->
+        <receiver
+            android:name=".alarm.BootCompletedReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- يستقبل إشعار اكتمال تحميل ملف تحديث APK من DownloadManager (بث نظامي
+             يصدر من عملية النظام، لذا exported=true ضروري هنا لاستقباله فعلياً) -->
+        <receiver
+            android:name=".data.update.ApkDownloadCompleteReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- FileProvider: يسمح لمثبّت الحزم النظامي بفتح ملف APK المُحمَّل بأمان -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+    </application>
+
+</manifest>
