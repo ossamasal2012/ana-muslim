@@ -1,7 +1,5 @@
 name: Flatten ana-muslim-app folder to repo root
 
-# تشغيل يدوي فقط من تبويب Actions → اختر هذا العمل → Run workflow.
-# لا يعمل تلقائياً أبداً، ومُصمَّم لتشغيله مرة واحدة فقط لإصلاح التداخل الحالي.
 on:
   workflow_dispatch: {}
 
@@ -17,27 +15,53 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Move everything out of ana-muslim-app/ into repo root
+      # ============================================================
+      # نتجاهل مجلد .github كلياً ولا نلمسه إطلاقاً هنا، عمداً:
+      # 1) GitHub يمنع الـ GITHUB_TOKEN الافتراضي من دفع أي تعديل على
+      #    ملفات .github/workflows/* مهما كانت الصلاحيات المُعطاة له —
+      #    قيد أمني من GitHub نفسه، وليس شيئاً نقدر نلتف عليه هنا بأمان.
+      # 2) لو كان .github موجوداً مسبقاً بالجذر (غالباً فيه ملفات أضفتها
+      #    يدوياً)، حذفه بالكامل لاستبداله كان يفقدك تلك الملفات —
+      #    تركه دون أي لمس هو الحل الأضمن دوماً.
+      # أي ملف .github/workflows/release.yml متداخل جوّا ana-muslim-app
+      # سيبقى مكانه؛ الخطوة الأخيرة تطبع لك تعليمات دقيقة لنقله يدوياً
+      # (كبشر عبر واجهة GitHub، لا Bot، فلا يصطدم بنفس القيد إطلاقاً).
+      # ============================================================
+      - name: Move everything out of ana-muslim-app/ into repo root (except .github)
+        id: move
         run: |
           set -e
           if [ ! -d "ana-muslim-app" ]; then
-            echo "لا يوجد مجلد ana-muslim-app بالجذر أصلاً — لا شيء لفعله (ربما نُفِّذ هذا العمل من قبل)."
+            echo "لا يوجد مجلد ana-muslim-app بالجذر أصلاً — لا شيء لفعله."
+            echo "nested_github=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           shopt -s dotglob nullglob
           for item in ana-muslim-app/*; do
             base="$(basename "$item")"
+
+            if [ "$base" = ".github" ]; then
+              echo "::notice::تخطّي ana-muslim-app/.github عمداً (يحتاج نقلاً يدوياً — راجع ملخص التشغيل)."
+              continue
+            fi
+
             if [ -e "$base" ]; then
               echo "::warning::استبدال عنصر موجود مسبقاً بالجذر بنفس الاسم: $base"
               rm -rf "$base"
             fi
             mv "$item" "$base"
           done
-          rmdir ana-muslim-app
 
           echo "محتوى الجذر بعد النقل:"
           ls -la
+
+          if [ -d "ana-muslim-app" ]; then
+            echo "nested_github=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::مجلد ana-muslim-app ما زال موجوداً (يحوي فقط .github المتروك عمداً) — راجع خطوات الإنهاء اليدوي."
+          else
+            echo "nested_github=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Commit and push (only if something actually changed)
         run: |
@@ -49,6 +73,16 @@ jobs:
             echo "لا تغييرات فعلية — لا حاجة لأي Commit."
             exit 0
           fi
-          git commit -m "نقل محتوى ana-muslim-app/ إلى جذر المستودع [flatten]"
+          git commit -m "نقل محتوى ana-muslim-app/ إلى جذر المستودع (عدا .github) [flatten]"
           git pull --rebase origin "${{ github.ref_name }}" || true
           git push origin "HEAD:${{ github.ref_name }}"
+
+      - name: Print manual finishing steps if a nested .github remains
+        if: steps.move.outputs.nested_github == 'true'
+        run: |
+          echo "##[group]خطوات يدوية متبقية (مرة واحدة فقط)"
+          echo "1) افتح ملف ana-muslim-app/.github/workflows/release.yml بالموقع، انسخ محتواه كاملاً."
+          echo "2) اذهب لـ .github/workflows/ بالجذر → Add file → Create new file → اكتب الاسم release.yml → الصق المحتوى → Commit."
+          echo "3) احذف يدوياً ملف ana-muslim-app/.github/workflows/release.yml القديم، ثم المجلد ana-muslim-app الفارغ المتبقي."
+          echo "هذه الخطوات بشرية عبر واجهة GitHub مباشرة، فلا تصطدم بقيد صلاحيات الـ Workflow إطلاقاً."
+          echo "##[endgroup]"
