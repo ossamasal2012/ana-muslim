@@ -33,7 +33,27 @@
 -keep class com.anamuslim.app.data.**.**Dto { *; }
 -keep class com.anamuslim.app.data.**.**Response { *; }
 
-# --- عام: الحفاظ على أسماء الأصناف التي تُستخدم بالتفكير (Reflection) ---
+# --- عام: الحفاظ على أسماء الأصناف التي يحتاجها نظام أندرويد عبر AndroidManifest ---
+# ملاحظة: Android Gradle Plugin يولّد تلقائياً قواعد مشابهة لكل مكوّن مُعلَن في
+# AndroidManifest.xml، لكن هذا السطر صريح إضافي يضمن عدم تغيير اسم صنفَي الخدمة
+# والمستقبِل الصوتي الحسّاسين (تشغيل الأذان) تحت أي ظرف.
+-keep class * extends android.app.Service { public <init>(); }
+-keep class * extends android.content.BroadcastReceiver { public <init>(); }
+
+# --- تعزيز التعتيم على الكود المُجمَّع (Hardening) ---
+# أسماء الملفات الأصلية (QuranScreen.kt وغيرها) تُستبدل بقيمة ثابتة عامة؛ أرقام
+# الأسطر تبقى (مع keepattributes LineNumberTable أعلاه) لتبقى تقارير الأعطال
+# قابلة لفك الترميز من جهتكم عبر ملف mapping.txt الذي ينتجه كل بناء على GitHub
+# Actions (artifact خاص بالبناء، لا يُشحن أبداً داخل APK نفسه).
 -keepattributes SourceFile,LineNumberTable
--keepclassmembers class * extends android.app.Service
--keepclassmembers class * extends android.content.BroadcastReceiver
+-renamesourcefileattribute SourceFile
+# يسمح لـ R8 بتسطيح كل الأصناف المُعتَّمة داخل حزمة واحدة غير مسمّاة، فيصعب على
+# أي أداة فكّ ترجمة استنتاج بنية الحزم/الوحدات الأصلية للمشروع.
+-repackageclasses ''
+# يسمح لـ R8 بتعديل مستويات الوصول (private/public) عند الحاجة لتفعيل تعتيم
+# وتصغير أكثر فعالية؛ آمن تماماً هنا لأن كل شيء داخل APK واحد مُوقَّع (لا توجد
+# مكتبة عامة يعتمد عليها كود خارجي على ظهور تعديل التوقيعات هذا).
+-allowaccessmodification
+# يسمح بإعادة استخدام نفس الاسم المُعتَّم القصير لعدة أعضاء مختلفين (تحميل
+# زائد)، فيصبح الناتج المُفكَّكة ترجمته أكثر تشويشاً وأصغر حجماً.
+-overloadaggressively
