@@ -5,7 +5,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.anamuslim.app.alarm.AlarmScheduler
 import com.anamuslim.app.core.ServiceLocator
+import com.anamuslim.app.data.settings.QuranDisplayMode
 import com.anamuslim.app.data.settings.SettingsRepository
+import com.anamuslim.app.data.settings.TimeFormatPreference
 import com.anamuslim.app.data.update.UpdateCheckResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +21,9 @@ data class SettingsUiState(
     val asrEnabled: Boolean = true,
     val maghribEnabled: Boolean = true,
     val ishaEnabled: Boolean = true,
-    val isCheckingUpdate: Boolean = false
+    val isCheckingUpdate: Boolean = false,
+    val quranDisplayMode: QuranDisplayMode = QuranDisplayMode.CONTINUOUS_SCROLL,
+    val timeFormat: TimeFormatPreference = TimeFormatPreference.HOUR_12
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -44,6 +48,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 )
             }
         }
+        // تجميع منفصل عمداً عن الأعلى حتى لا يُلمس منطق تنبيهات الأذان العامل حالياً.
+        viewModelScope.launch {
+            combine(
+                settings.quranDisplayMode,
+                settings.timeFormatPreference
+            ) { mode, format -> mode to format }.collect { (mode, format) ->
+                _uiState.value = _uiState.value.copy(quranDisplayMode = mode, timeFormat = format)
+            }
+        }
     }
 
     fun setPrayerEnabled(prayer: SettingsRepository.Prayer, enabled: Boolean) {
@@ -60,5 +73,15 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             _uiState.value = _uiState.value.copy(isCheckingUpdate = false)
             onResult(result)
         }
+    }
+
+    /** وضع عرض القرآن: التبديل فوري لأن الشاشة تقرأ هذا الإعداد مباشرة من DataStore. */
+    fun setQuranDisplayMode(mode: QuranDisplayMode) {
+        viewModelScope.launch { settings.setQuranDisplayMode(mode) }
+    }
+
+    /** نظام 12/24 ساعة: لا يغيّر حسابات الأوقات، فقط طريقة عرضها في كل الشاشات. */
+    fun setTimeFormat(format: TimeFormatPreference) {
+        viewModelScope.launch { settings.setTimeFormatPreference(format) }
     }
 }
