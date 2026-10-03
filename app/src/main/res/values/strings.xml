@@ -77,6 +77,13 @@
     <string name="settings_adhan_enable_all">فعّل أو أوقف تنبيه الأذان لكل صلاة على حدة</string>
     <string name="settings_section_location">الموقع</string>
     <string name="settings_change_location">تغيير الموقع / المدينة</string>
+    <string name="settings_section_quran_display">طريقة عرض صفحات القرآن</string>
+    <string name="settings_quran_display_desc">اختر الطريقة التي تناسبك في تصفح صفحات المصحف</string>
+    <string name="settings_quran_display_continuous">صفحة تحت صفحة (تمرير متواصل بالسحب)</string>
+    <string name="settings_quran_display_tap_button">صفحة واحدة (الانتقال بزر التالي/السابق)</string>
+    <string name="settings_section_time_format">نظام عرض الوقت</string>
+    <string name="settings_time_format_12">نظام 12 ساعة</string>
+    <string name="settings_time_format_24">نظام 24 ساعة</string>
     <string name="settings_section_about">حول التطبيق</string>
     <string name="settings_check_update">التحقق من وجود تحديث</string>
     <string name="settings_current_version">الإصدار الحالي: %1$s</string>
