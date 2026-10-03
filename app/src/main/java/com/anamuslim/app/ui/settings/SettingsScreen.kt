@@ -3,6 +3,7 @@
 package com.anamuslim.app.ui.settings
 
 import android.os.Build
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -16,7 +17,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anamuslim.app.BuildConfig
 import com.anamuslim.app.R
+import com.anamuslim.app.data.settings.QuranDisplayMode
 import com.anamuslim.app.data.settings.SettingsRepository
+import com.anamuslim.app.data.settings.TimeFormatPreference
 import com.anamuslim.app.data.update.UpdateCheckResult
 import com.anamuslim.app.ui.update.UpdateDialogHost
 
@@ -60,6 +63,37 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
                     }
                 }
             }
+
+            Divider(Modifier.padding(vertical = 12.dp))
+            SectionTitle(stringResource(R.string.settings_section_quran_display))
+            Text(
+                stringResource(R.string.settings_quran_display_desc),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            RadioOptionRow(
+                label = stringResource(R.string.settings_quran_display_continuous),
+                selected = state.quranDisplayMode == QuranDisplayMode.CONTINUOUS_SCROLL,
+                onClick = { viewModel.setQuranDisplayMode(QuranDisplayMode.CONTINUOUS_SCROLL) }
+            )
+            RadioOptionRow(
+                label = stringResource(R.string.settings_quran_display_tap_button),
+                selected = state.quranDisplayMode == QuranDisplayMode.TAP_BUTTON,
+                onClick = { viewModel.setQuranDisplayMode(QuranDisplayMode.TAP_BUTTON) }
+            )
+
+            Divider(Modifier.padding(vertical = 12.dp))
+            SectionTitle(stringResource(R.string.settings_section_time_format))
+            RadioOptionRow(
+                label = stringResource(R.string.settings_time_format_12),
+                selected = state.timeFormat == TimeFormatPreference.HOUR_12,
+                onClick = { viewModel.setTimeFormat(TimeFormatPreference.HOUR_12) }
+            )
+            RadioOptionRow(
+                label = stringResource(R.string.settings_time_format_24),
+                selected = state.timeFormat == TimeFormatPreference.HOUR_24,
+                onClick = { viewModel.setTimeFormat(TimeFormatPreference.HOUR_24) }
+            )
 
             Divider(Modifier.padding(vertical = 12.dp))
             SectionTitle(stringResource(R.string.settings_section_about))
@@ -111,5 +145,20 @@ private fun PrayerToggleRow(label: String, checked: Boolean, onChange: (Boolean)
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge)
         Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+@Composable
+private fun RadioOptionRow(label: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(selected = selected, onClick = onClick)
+        Spacer(Modifier.width(4.dp))
+        Text(label, style = MaterialTheme.typography.bodyLarge)
     }
 }
