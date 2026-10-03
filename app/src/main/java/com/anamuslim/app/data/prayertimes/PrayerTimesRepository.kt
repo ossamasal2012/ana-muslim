@@ -2,6 +2,7 @@ package com.anamuslim.app.data.prayertimes
 
 import com.anamuslim.app.data.prayertimes.JafariPrayerCalculator.roundToMinuteOfDay
 import com.anamuslim.app.data.settings.SettingsRepository
+import com.anamuslim.app.data.settings.TimeFormatPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -20,10 +21,31 @@ data class PrayerTimesDisplay(
     val midnightMinute: Int
 ) {
     companion object {
-        fun formatMinute(minuteOfDay: Int): String {
-            val h = (minuteOfDay / 60) % 24
+        /**
+         * يحوّل دقيقة اليوم (0..1439 — رقم صحيح لا علاقة له بطريقة العرض) إلى نص
+         * جاهز للعرض حسب تفضيل المستخدم. هذه الدالة هي نقطة العرض الوحيدة؛ لا تُغيَّر
+         * الحسابات الفعلية (minuteOfDay) أبداً بسبب تغيير هذا التفضيل، فقط شكل النص.
+         *
+         * - 24 ساعة: نفس التنسيق الأصلي تماماً بلا أي تغيير 00:00..23:59.
+         * - 12 ساعة: تنسيق عربي واضح "س:دد ص/م" (ص = صباحاً، م = مساءً)، الساعة 1..12.
+         */
+        fun formatMinute(
+            minuteOfDay: Int,
+            format: TimeFormatPreference = TimeFormatPreference.HOUR_12
+        ): String {
+            val h24 = (minuteOfDay / 60) % 24
             val m = minuteOfDay % 60
-            return "%02d:%02d".format(h, m)
+            return when (format) {
+                TimeFormatPreference.HOUR_24 -> "%02d:%02d".format(h24, m)
+                TimeFormatPreference.HOUR_12 -> {
+                    val period = if (h24 < 12) "ص" else "م"
+                    val h12 = when (val h = h24 % 12) {
+                        0 -> 12
+                        else -> h
+                    }
+                    "%d:%02d %s".format(h12, m, period)
+                }
+            }
         }
     }
 }
