@@ -11,19 +11,28 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anamuslim.app.R
+import com.anamuslim.app.core.ServiceLocator
 import com.anamuslim.app.data.prayertimes.PrayerName
 import com.anamuslim.app.data.prayertimes.PrayerTimesDisplay
+import com.anamuslim.app.data.settings.TimeFormatPreference
 
 @Composable
 fun PrayerTimesScreen(viewModel: PrayerTimesViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
     val times = state.times
     val rows = if (times != null) prayerRows(times) else emptyList()
+
+    // قراءة تفضيل 12/24 ساعة مباشرةً: أي تغيير من الإعدادات ينعكس هنا فوراً دون
+    // الحاجة لإعادة تشغيل التطبيق، لأن هذا Flow من DataStore ويُعاد بثّه تلقائياً.
+    val context = LocalContext.current
+    val timeFormat by ServiceLocator.settings(context).timeFormatPreference
+        .collectAsState(initial = TimeFormatPreference.HOUR_12)
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(title = { Text(stringResource(R.string.app_name)) })
@@ -41,7 +50,7 @@ fun PrayerTimesScreen(viewModel: PrayerTimesViewModel = viewModel()) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item { HijriHeader(state.hijriLabel) }
-            item { NextPrayerCard(state) }
+            item { NextPrayerCard(state, timeFormat) }
             item {
                 Text(
                     stringResource(R.string.calculation_method_jafari),
@@ -51,7 +60,7 @@ fun PrayerTimesScreen(viewModel: PrayerTimesViewModel = viewModel()) {
                 )
             }
             items(rows) { row ->
-                PrayerRow(row, isNext = row.name == state.next?.prayer)
+                PrayerRow(row, isNext = row.name == state.next?.prayer, timeFormat = timeFormat)
             }
         }
     }
@@ -67,7 +76,7 @@ private fun HijriHeader(hijriLabel: String) {
 }
 
 @Composable
-private fun NextPrayerCard(state: PrayerTimesUiState) {
+private fun NextPrayerCard(state: PrayerTimesUiState, timeFormat: TimeFormatPreference) {
     val next = state.next ?: return
     val hours = next.minutesRemaining / 60
     val minutes = next.minutesRemaining % 60
@@ -84,13 +93,14 @@ private fun NextPrayerCard(state: PrayerTimesUiState) {
             )
             Spacer(Modifier.height(8.dp))
             Text(
+                // عدّاد تنازلي (مدة متبقية) وليس "وقتاً بالساعة"، فلا علاقة له بإعداد 12/24 ساعة
                 text = if (hours > 0) "%dس %02dد".format(hours, minutes) else "%d دقيقة".format(minutes),
                 style = MaterialTheme.typography.displayLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
             Text(
-                PrayerTimesDisplay.formatMinute(next.atMinuteOfDay),
+                PrayerTimesDisplay.formatMinute(next.atMinuteOfDay, timeFormat),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
@@ -122,7 +132,7 @@ private fun prayerLabel(name: PrayerName): String = when (name) {
 }
 
 @Composable
-private fun PrayerRow(row: PrayerRowData, isNext: Boolean) {
+private fun PrayerRow(row: PrayerRowData, isNext: Boolean, timeFormat: TimeFormatPreference) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -136,7 +146,7 @@ private fun PrayerRow(row: PrayerRowData, isNext: Boolean) {
         ) {
             Text(row.label, style = MaterialTheme.typography.titleMedium)
             Text(
-                PrayerTimesDisplay.formatMinute(row.minute),
+                PrayerTimesDisplay.formatMinute(row.minute, timeFormat),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = if (isNext) FontWeight.Bold else FontWeight.Normal,
                 color = if (isNext) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface
