@@ -12,10 +12,26 @@ import kotlinx.coroutines.flow.map
 
 private val Context.dataStore by preferencesDataStore(name = "ana_muslim_settings")
 
+/** وضع عرض صفحات القرآن: سحب متواصل (الافتراضي) أو تنقّل بزر. */
+enum class QuranDisplayMode {
+    /** صفحة تحت صفحة، تمرير عمودي متواصل (الوضع الافتراضي عند أول استخدام). */
+    CONTINUOUS_SCROLL,
+    /** صفحة واحدة في كل مرة، الانتقال عبر زر "التالي/السابق" (النظام الأصلي). */
+    TAP_BUTTON
+}
+
+/** نظام عرض الوقت في كل الواجهة: 12 ساعة (الافتراضي) أو 24 ساعة. */
+enum class TimeFormatPreference {
+    HOUR_12,
+    HOUR_24
+}
+
 /**
  * مستودع مركزي لكل الإعدادات التي يجب أن تبقى محفوظة حتى لو أُغلق التطبيق:
  * - تفعيل/إيقاف تنبيه الأذان لكل صلاة (افتراضياً الكل مفعّل)
  * - الموقع الجغرافي المحفوظ لحساب مواقيت الصلاة
+ * - وضع عرض صفحات القرآن (سحب متواصل / زر)
+ * - نظام عرض الوقت (12/24 ساعة)
  */
 class SettingsRepository(private val context: Context) {
 
@@ -32,6 +48,9 @@ class SettingsRepository(private val context: Context) {
         val LOCATION_CITY_NAME = stringPreferencesKey("location_city_name")
 
         val LAST_KNOWN_INSTALLED_VERSION_CODE = intPreferencesKey("last_known_installed_version_code")
+
+        val QURAN_DISPLAY_MODE = stringPreferencesKey("quran_display_mode")
+        val TIME_FORMAT = stringPreferencesKey("time_format_preference")
     }
 
     enum class Prayer(val key: androidx.datastore.preferences.core.Preferences.Key<Boolean>) {
@@ -85,5 +104,36 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setLastKnownInstalledVersionCode(code: Int) {
         context.dataStore.edit { it[Keys.LAST_KNOWN_INSTALLED_VERSION_CODE] = code }
+    }
+
+    /**
+     * وضع عرض القرآن المحفوظ. القيمة الافتراضية عند أول استخدام (أي عندما لا يوجد
+     * أي اختيار محفوظ بعد) هي CONTINUOUS_SCROLL ("صفحة تحت صفحة") كما طُلب تحديداً.
+     * أي قيمة محفوظة غير معروفة (مثلاً من نسخة تطبيق مستقبلية) تُعامل بأمان بالرجوع
+     * لنفس الافتراضي بدل تعطّل الشاشة.
+     */
+    val quranDisplayMode: Flow<QuranDisplayMode> = context.dataStore.data.map { prefs ->
+        prefs[Keys.QURAN_DISPLAY_MODE]?.let { stored ->
+            runCatching { QuranDisplayMode.valueOf(stored) }.getOrNull()
+        } ?: QuranDisplayMode.CONTINUOUS_SCROLL
+    }
+
+    suspend fun setQuranDisplayMode(mode: QuranDisplayMode) {
+        context.dataStore.edit { it[Keys.QURAN_DISPLAY_MODE] = mode.name }
+    }
+
+    /**
+     * نظام عرض الوقت المحفوظ (12/24 ساعة). القيمة الافتراضية عند أول استخدام هي
+     * HOUR_12 كما طُلب تحديداً. هذا الإعداد يتحكم فقط بطريقة *عرض* الوقت؛ لا علاقة
+     * له إطلاقاً بحساب مواقيت الصلاة الفعلي (ذلك يبقى بدقائق اليوم كرقم صحيح كما هو).
+     */
+    val timeFormatPreference: Flow<TimeFormatPreference> = context.dataStore.data.map { prefs ->
+        prefs[Keys.TIME_FORMAT]?.let { stored ->
+            runCatching { TimeFormatPreference.valueOf(stored) }.getOrNull()
+        } ?: TimeFormatPreference.HOUR_12
+    }
+
+    suspend fun setTimeFormatPreference(format: TimeFormatPreference) {
+        context.dataStore.edit { it[Keys.TIME_FORMAT] = format.name }
     }
 }
