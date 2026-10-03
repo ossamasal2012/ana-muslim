@@ -6,6 +6,7 @@ import com.anamuslim.app.alarm.DailyRefreshWorker
 import com.anamuslim.app.core.ServiceLocator
 import com.anamuslim.app.data.update.ApkDownloadManagerHelper
 import com.anamuslim.app.notifications.NotificationHelper
+import com.anamuslim.app.security.IntegrityChecker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -36,6 +37,12 @@ class AnaMuslimApp : Application() {
         }
 
         DailyRefreshWorker.schedule(this)
+
+        // فحص توقيع خفيف وغير معطِّل في الخلفية (راجع IntegrityChecker.kt لتفاصيل
+        // حدوده المهمة) — لا يؤخر الإقلاع ولا يوقف التطبيق أبداً مهما كانت نتيجته.
+        appScope.launch {
+            IntegrityChecker.verifySigningCertificate(this@AnaMuslimApp)
+        }
     }
 
     private fun defaultTasbihNames(): List<String> = listOf(
