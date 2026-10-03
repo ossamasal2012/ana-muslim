@@ -23,6 +23,37 @@ val hasReleaseSigning = !releaseStoreFile.isNullOrBlank() &&
     !releaseKeyAlias.isNullOrBlank() &&
     !releaseKeyPassword.isNullOrBlank()
 
+// ============================================================================
+// بصمة شهادة التوقيع (SHA-256) تُحسب تلقائياً هنا من نفس ملف مفتاح الإصدار
+// المستخدَم أعلاه للتوقيع — دون أي إدخال يدوي، فتبقى صحيحة دائماً بالضرورة لأنها
+// مُشتقّة من نفس السرّ الذي سيُوقَّع به APK هذا بالضبط. تُستخدم وقت التشغيل
+// (راجع IntegrityChecker.kt) للتنبيه فقط إن أُعيد توقيع نسخة مُعدَّلة من التطبيق
+// بمفتاح مختلف عن مفتاحكم الأصلي ثم أُعيد توزيعها. لا تؤثر على أي وظيفة أخرى:
+// أي خطأ أثناء الحساب يُهمَل بأمان (سلسلة فارغة = الفحص معطّل تلقائياً وقت
+// التشغيل) فلا يتوقف بناء APK بسبب هذا أبداً.
+// ============================================================================
+val releaseSigningCertSha256: String = if (hasReleaseSigning) {
+    runCatching {
+        var certBytes: ByteArray? = null
+        for (keystoreType in listOf("PKCS12", "JKS")) {
+            if (certBytes != null) break
+            runCatching {
+                val keyStore = java.security.KeyStore.getInstance(keystoreType)
+                file(releaseStoreFile!!).inputStream().use { stream ->
+                    keyStore.load(stream, releaseStorePassword!!.toCharArray())
+                }
+                certBytes = keyStore.getCertificate(releaseKeyAlias!!)?.encoded
+            }
+        }
+        certBytes?.let { bytes ->
+            java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
+                .joinToString("") { b -> "%02X".format(b.toInt() and 0xFF) }
+        } ?: ""
+    }.getOrDefault("")
+} else {
+    ""
+}
+
 // قراءة رقم ونص الإصدار من ملف واحد بسيط (version.properties) بدل دفنهما داخل
 // سكربت البناء — هذا يجعل رفع رقم الإصدار عند كل تحديث عملية تحرير سطرين فقط
 // وهي نفس الطريقة المتبعة سابقاً في مشروعكم الآخر، لتبقى العملية مألوفة لكم.
@@ -60,6 +91,14 @@ android {
             "String",
             "GITHUB_REPO_RELEASES_URL",
             "\"https://github.com/ossamasal2012/ana-muslim/releases/latest\""
+        )
+        // فارغة تلقائياً لأي بناء محلي/تجريبي بلا أسرار توقيع حقيقية (الفحص وقت
+        // التشغيل يتجاهل نفسه تماماً في هذه الحالة). تُملأ فعلياً فقط في بناء
+        // GitHub Actions الموقَّع رسمياً.
+        buildConfigField(
+            "String",
+            "EXPECTED_SIGNING_CERT_SHA256",
+            "\"$releaseSigningCertSha256\""
         )
     }
 
