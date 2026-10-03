@@ -13,8 +13,13 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -23,11 +28,15 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.anamuslim.app.R
+import com.anamuslim.app.core.ServiceLocator
+import com.anamuslim.app.data.update.UpdateCheckResult
+import com.anamuslim.app.data.update.VersionInfo
 import com.anamuslim.app.ui.hijri.HijriCalendarScreen
 import com.anamuslim.app.ui.prayertimes.PrayerTimesScreen
 import com.anamuslim.app.ui.quran.QuranScreen
 import com.anamuslim.app.ui.settings.SettingsScreen
 import com.anamuslim.app.ui.tasbih.TasbihScreen
+import com.anamuslim.app.ui.update.UpdateDialogHost
 
 private sealed class Destination(val route: String, val labelRes: Int, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     object Prayer : Destination("prayer", R.string.nav_prayer_times, Icons.Filled.AccessTime)
@@ -44,6 +53,20 @@ private val bottomDestinations = listOf(
 @Composable
 fun AnaMuslimNavHost() {
     val navController = rememberNavController()
+    val context = LocalContext.current
+
+    // تحقق تلقائي من وجود تحديث عند تشغيل التطبيق (مرة واحدة لكل جلسة تشغيل، عبر
+    // LaunchedEffect(Unit))، بالإضافة إلى زر التحقق اليدوي الموجود في الإعدادات —
+    // الاثنان يستخدمان نفس UpdateRepository.checkForUpdate() ونفس UpdateDialogHost
+    // دون أي نظام جديد. يعمل في coroutine بالخلفية فلا يؤخر ظهور الواجهة إطلاقاً،
+    // وإن تعذّر الاتصال بالشبكة أو لم يوجد تحديث فلا تظهر أي نافذة مزعجة للمستخدم.
+    var autoUpdateInfo by remember { mutableStateOf<VersionInfo?>(null) }
+    LaunchedEffect(Unit) {
+        val result = ServiceLocator.update(context).checkForUpdate()
+        if (result is UpdateCheckResult.UpdateAvailable) {
+            autoUpdateInfo = result.info
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -80,5 +103,9 @@ fun AnaMuslimNavHost() {
             composable(Destination.Calendar.route) { HijriCalendarScreen() }
             composable(Destination.Settings.route) { SettingsScreen() }
         }
+    }
+
+    autoUpdateInfo?.let { info ->
+        UpdateDialogHost(info = info, onDismissRequest = { autoUpdateInfo = null })
     }
 }
