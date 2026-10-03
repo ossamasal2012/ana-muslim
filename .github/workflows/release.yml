@@ -74,13 +74,39 @@ jobs:
           SIZE=$(stat -c%s release_out/app-release.apk)
           echo "size=$SIZE" >> "$GITHUB_OUTPUT"
 
+      # ====================================================================
+      # دعم اختياري وغير مُفعَّل تلقائياً لفصل "مستودع المصدر" (يمكن جعله Private
+      # لاحقاً لإخفاء الكود الحقيقي بالكامل) عن "مستودع الإصدارات العامة" (يبقى
+      # Public لأن التطبيق المثبَّت لدى المستخدمين يحتاج تنزيل version.json وملف
+      # APK منه دون تسجيل دخول). طالما لم تُضيفوا السرّين أدناه، لا شيء يتغيّر
+      # إطلاقاً عن السلوك الحالي — هذا البناء سيستمر بالنشر لنفس هذا المستودع
+      # بالضبط كما يعمل الآن. فقط إن قررتم لاحقاً تفعيل الفصل (راجع شرح ذلك في
+      # ملخص التعديلات المُرسَل لكم)، أضيفوا:
+      #   RELEASES_REPO        = اسم مستودع الإصدارات العام، مثلاً owner/ana-muslim-releases
+      #   RELEASES_REPO_TOKEN  = Personal Access Token صلاحيته contents:write على ذلك المستودع فقط
+      # ====================================================================
+      - name: Determine releases target repo (defaults to this same repo)
+        id: releases_target
+        env:
+          HAS_SPLIT_REPO: ${{ secrets.RELEASES_REPO != '' && secrets.RELEASES_REPO_TOKEN != '' }}
+        run: |
+          if [ "$HAS_SPLIT_REPO" = "true" ]; then
+            echo "repo=${{ secrets.RELEASES_REPO }}" >> "$GITHUB_OUTPUT"
+            echo "using_split_repo=true" >> "$GITHUB_OUTPUT"
+            echo "سيُنشر هذا الإصدار إلى مستودع الإصدارات المنفصل: ${{ secrets.RELEASES_REPO }}"
+          else
+            echo "repo=${{ github.repository }}" >> "$GITHUB_OUTPUT"
+            echo "using_split_repo=false" >> "$GITHUB_OUTPUT"
+            echo "لم يُفعَّل الفصل بعد؛ سيُنشر هذا الإصدار إلى نفس هذا المستودع كما هو الحال الآن."
+          fi
+
       - name: Generate version.json
         run: |
           cat > release_out/version.json << EOF
           {
             "versionCode": ${{ steps.ver.outputs.code }},
             "versionName": "${{ steps.ver.outputs.name }}",
-            "apkUrl": "https://github.com/${{ github.repository }}/releases/download/latest/app-release.apk",
+            "apkUrl": "https://github.com/${{ steps.releases_target.outputs.repo }}/releases/download/latest/app-release.apk",
             "apkSizeBytes": ${{ steps.apk.outputs.size }},
             "releaseNotes": ""
           }
@@ -89,14 +115,15 @@ jobs:
 
       - name: Publish/replace the "latest" GitHub Release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.releases_target.outputs.using_split_repo == 'true' && secrets.RELEASES_REPO_TOKEN || secrets.GITHUB_TOKEN }}
+          TARGET_REPO: ${{ steps.releases_target.outputs.repo }}
         run: |
           set -e
-          if gh release view latest --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release delete latest --repo "${{ github.repository }}" --yes --cleanup-tag
+          if gh release view latest --repo "$TARGET_REPO" >/dev/null 2>&1; then
+            gh release delete latest --repo "$TARGET_REPO" --yes --cleanup-tag
           fi
           gh release create latest \
-            --repo "${{ github.repository }}" \
+            --repo "$TARGET_REPO" \
             --title "أنا مسلم - v${{ steps.ver.outputs.name }}" \
             --notes "إصدار تلقائي رقم ${{ steps.ver.outputs.code }} (${{ steps.ver.outputs.name }})" \
             release_out/app-release.apk release_out/version.json
