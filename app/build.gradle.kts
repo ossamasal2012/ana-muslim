@@ -1,3 +1,5 @@
+import java.security.KeyStore
+import java.security.MessageDigest
 import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -38,7 +40,7 @@ val releaseSigningCertSha256: String = if (hasReleaseSigning) {
         for (keystoreType in listOf("PKCS12", "JKS")) {
             if (certBytes != null) break
             runCatching {
-                val keyStore = java.security.KeyStore.getInstance(keystoreType)
+                val keyStore = KeyStore.getInstance(keystoreType)
                 file(releaseStoreFile!!).inputStream().use { stream ->
                     keyStore.load(stream, releaseStorePassword!!.toCharArray())
                 }
@@ -46,8 +48,8 @@ val releaseSigningCertSha256: String = if (hasReleaseSigning) {
             }
         }
         certBytes?.let { bytes ->
-            java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
-                .joinToString("") { b -> "%02X".format(b.toInt() and 0xFF) }
+            MessageDigest.getInstance("SHA-256").digest(bytes)
+                .joinToString("") { b: Byte -> "%02X".format(b.toInt() and 0xFF) }
         } ?: ""
     }.getOrDefault("")
 } else {
