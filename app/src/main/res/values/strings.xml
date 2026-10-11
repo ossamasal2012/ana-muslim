@@ -32,6 +32,9 @@
     <string name="exact_alarm_warning">إذن المنبهات الدقيقة غير مفعّل، لذلك قد لا يرنّ الأذان في وقته بالضبط.</string>
     <string name="prayer_not_available">غير متوفر</string>
     <string name="calculation_method_jafari">الحساب الجعفري (الشيعي) — معهد ليفا، قُم</string>
+    <string name="calculation_method_najaf">الحساب الجعفري — مركز الدراسات والبحوث الفلكية (الفجر 18°، المغرب 4.5°)</string>
+    <string name="calculation_method_tehran">الحساب الجعفري — معهد الجيوفيزياء، جامعة طهران</string>
+    <string name="prayer_fajr_precaution">الفجر احتياطاً (16°)</string>
     <string name="asr_shadow_length">وقت العصر عند تساوي ظل الشيء مع طوله (المذهب الجعفري)</string>
 
     <!-- قارئ المصحف PDF -->
@@ -77,6 +80,14 @@
     <string name="settings_adhan_enable_all">فعّل أو أوقف تنبيه الأذان لكل صلاة على حدة</string>
     <string name="settings_section_location">الموقع</string>
     <string name="settings_change_location">تغيير الموقع / المدينة</string>
+    <string name="settings_section_calc_method">طريقة حساب المواقيت</string>
+    <string name="settings_calc_method_desc">اختر المعيار الذي يوافق مرجعك الديني. يغيّر وقت الفجر والمغرب ومنتصف الليل، وتُعاد جدولة الأذان تلقائياً.</string>
+    <string name="calc_method_najaf_title">مركز الدراسات والبحوث الفلكية (المرتبط بمكتب السيد السيستاني)</string>
+    <string name="calc_method_najaf_desc">الفجر 18° — المغرب 4.5° — منتصف الليل بين الغروب والفجر — يظهر الفجر احتياطاً عند 16° — العشاء 14° (اصطلاحي)</string>
+    <string name="calc_method_leva_title">معهد ليفا — قُم</string>
+    <string name="calc_method_leva_desc">الفجر 16° — المغرب 4° — العشاء 14° (المعيار الذي كان مستخدماً سابقاً في التطبيق)</string>
+    <string name="calc_method_tehran_title">معهد الجيوفيزياء — جامعة طهران</string>
+    <string name="calc_method_tehran_desc">الفجر 17.7° — المغرب 4.5° — العشاء 14°</string>
     <string name="settings_section_quran_display">طريقة عرض صفحات القرآن</string>
     <string name="settings_quran_display_desc">اختر الطريقة التي تناسبك في تصفح صفحات المصحف</string>
     <string name="settings_quran_display_continuous">صفحة تحت صفحة (تمرير متواصل بالسحب)</string>
