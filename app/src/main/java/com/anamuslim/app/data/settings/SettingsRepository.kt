@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.anamuslim.app.data.prayertimes.PrayerCalcMethod
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -32,6 +33,7 @@ enum class TimeFormatPreference {
  * - الموقع الجغرافي المحفوظ لحساب مواقيت الصلاة
  * - وضع عرض صفحات القرآن (سحب متواصل / زر)
  * - نظام عرض الوقت (12/24 ساعة)
+ * - معيار حساب مواقيت الصلاة (زوايا الفجر والمغرب) الذي يختاره المستخدم
  */
 class SettingsRepository(private val context: Context) {
 
@@ -51,6 +53,7 @@ class SettingsRepository(private val context: Context) {
 
         val QURAN_DISPLAY_MODE = stringPreferencesKey("quran_display_mode")
         val TIME_FORMAT = stringPreferencesKey("time_format_preference")
+        val PRAYER_CALC_METHOD = stringPreferencesKey("prayer_calc_method")
     }
 
     enum class Prayer(val key: androidx.datastore.preferences.core.Preferences.Key<Boolean>) {
@@ -135,5 +138,18 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setTimeFormatPreference(format: TimeFormatPreference) {
         context.dataStore.edit { it[Keys.TIME_FORMAT] = format.name }
+    }
+
+    /**
+     * معيار حساب المواقيت المحفوظ (زوايا الفجر والمغرب). القيمة الافتراضية عند أول استخدام هي
+     * PrayerCalcMethod.DEFAULT (معيار النجف: الفجر 18° والمغرب 4.5°)، وأي قيمة محفوظة مجهولة
+     * تعود بأمان إلى الافتراضي. تغييره يغيّر الأوقات المعروضة وجدولة الأذان معاً.
+     */
+    val prayerCalcMethod: Flow<PrayerCalcMethod> = context.dataStore.data.map { prefs ->
+        PrayerCalcMethod.fromStored(prefs[Keys.PRAYER_CALC_METHOD])
+    }
+
+    suspend fun setPrayerCalcMethod(method: PrayerCalcMethod) {
+        context.dataStore.edit { it[Keys.PRAYER_CALC_METHOD] = method.name }
     }
 }
