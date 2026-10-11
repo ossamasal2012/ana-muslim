@@ -18,7 +18,9 @@ data class PrayerTimesDisplay(
     val asrMinute: Int,
     val maghribMinute: Int,
     val ishaMinute: Int,
-    val midnightMinute: Int
+    val midnightMinute: Int,
+    /** وقت الفجر «احتياطاً» (زاوية أقل)، أو -1 إن لم يعرّف المعيار المختار وقتاً احتياطياً. */
+    val fajrPrecautionMinute: Int = -1
 ) {
     companion object {
         /**
@@ -59,13 +61,23 @@ class PrayerTimesRepository(
     private val locationHelper: LocationHelper
 ) {
 
+    private companion object {
+        // الموقع الافتراضي إلى حين تحديد موقع المستخدم: العتبة الحسينية المقدسة في كربلاء
+        // (ويكيبيديا: 32.61639°N, 44.03250°E). فرق الإحداثيات بينها وبين العتبة العباسية
+        // أو مركز المدينة لا يغيّر أي وقت أكثر من ثانيتين (قيس بالاختبار)، فلا حاجة لتفصيل أدق.
+        const val DEFAULT_LATITUDE = 32.61639
+        const val DEFAULT_LONGITUDE = 44.03250
+    }
+
     /** يحسب مواقيت اليوم الحالي بناءً على الموقع المحفوظ (أو موقع افتراضي إن لم يوجد بعد). */
     suspend fun getTodayTimes(referenceCalendar: Calendar = Calendar.getInstance()): PrayerTimesDisplay =
         withContext(Dispatchers.Default) {
             val loc = settings.savedLocation.first()
-            val lat = loc?.latitude ?: 32.6160 // كربلاء كموقع افتراضي منطقي إلى حين تحديد موقع المستخدم
-            val lng = loc?.longitude ?: 44.0249
+            val lat = loc?.latitude ?: DEFAULT_LATITUDE // كربلاء (العتبة الحسينية) إلى حين تحديد موقع المستخدم
+            val lng = loc?.longitude ?: DEFAULT_LONGITUDE
             val tz = loc?.timeZoneOffsetHours ?: locationHelper.currentUtcOffsetHours()
+            // معيار الحساب الذي اختاره المستخدم (الافتراضي: معيار النجف 18°/4.5°)
+            val profile = CalcProfile.forMethod(settings.prayerCalcMethod.first())
 
             val result = JafariPrayerCalculator.calculate(
                 year = referenceCalendar.get(Calendar.YEAR),
@@ -73,7 +85,8 @@ class PrayerTimesRepository(
                 day = referenceCalendar.get(Calendar.DAY_OF_MONTH),
                 latitude = lat,
                 longitude = lng,
-                timeZoneOffsetHours = tz
+                timeZoneOffsetHours = tz,
+                profile = profile
             )
 
             PrayerTimesDisplay(
@@ -89,7 +102,8 @@ class PrayerTimesRepository(
                 asrMinute = result.asr.roundToMinuteOfDay(),
                 maghribMinute = result.maghrib.roundToMinuteOfDay(),
                 ishaMinute = result.isha.roundToMinuteOfDay(),
-                midnightMinute = result.midnight.roundToMinuteOfDay()
+                midnightMinute = result.midnight.roundToMinuteOfDay(),
+                fajrPrecautionMinute = result.fajrPrecaution.roundToMinuteOfDay()
             )
         }
 
