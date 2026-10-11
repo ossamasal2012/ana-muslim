@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anamuslim.app.R
 import com.anamuslim.app.core.ServiceLocator
+import com.anamuslim.app.data.prayertimes.PrayerCalcMethod
 import com.anamuslim.app.data.prayertimes.PrayerName
 import com.anamuslim.app.data.prayertimes.PrayerTimesDisplay
 import com.anamuslim.app.data.settings.TimeFormatPreference
@@ -33,6 +34,9 @@ fun PrayerTimesScreen(viewModel: PrayerTimesViewModel = viewModel()) {
     val context = LocalContext.current
     val timeFormat by ServiceLocator.settings(context).timeFormatPreference
         .collectAsState(initial = TimeFormatPreference.HOUR_12)
+    // معيار الحساب المختار: يُعرض اسمه وزواياه تحت الأوقات حتى يعرف المستخدم على أي أساس تُحسب.
+    val calcMethod by ServiceLocator.settings(context).prayerCalcMethod
+        .collectAsState(initial = PrayerCalcMethod.DEFAULT)
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(title = { Text(stringResource(R.string.app_name)) })
@@ -53,7 +57,7 @@ fun PrayerTimesScreen(viewModel: PrayerTimesViewModel = viewModel()) {
             item { NextPrayerCard(state, timeFormat) }
             item {
                 Text(
-                    stringResource(R.string.calculation_method_jafari),
+                    stringResource(calcMethodLabelRes(calcMethod)),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp)
@@ -112,14 +116,24 @@ private data class PrayerRowData(val name: PrayerName?, val label: String, val m
 
 @Composable
 private fun prayerRows(times: PrayerTimesDisplay): List<PrayerRowData> = with(times) {
-    listOf(
+    listOfNotNull(
         PrayerRowData(PrayerName.FAJR, stringResource(R.string.prayer_fajr), fajrMinute),
+        // سطر «الفجر احتياطاً» يظهر فقط للمعايير التي تعرّف زاوية احتياط (معيار النجف 18° ← 16°)
+        if (fajrPrecautionMinute >= 0) {
+            PrayerRowData(null, stringResource(R.string.prayer_fajr_precaution), fajrPrecautionMinute)
+        } else null,
         PrayerRowData(null, stringResource(R.string.prayer_sunrise), sunriseMinute),
         PrayerRowData(PrayerName.DHUHR, stringResource(R.string.prayer_dhuhr), dhuhrMinute),
         PrayerRowData(PrayerName.ASR, stringResource(R.string.prayer_asr), asrMinute),
         PrayerRowData(PrayerName.MAGHRIB, stringResource(R.string.prayer_maghrib), maghribMinute),
         PrayerRowData(PrayerName.ISHA, stringResource(R.string.prayer_isha), ishaMinute)
     )
+}
+
+private fun calcMethodLabelRes(method: PrayerCalcMethod): Int = when (method) {
+    PrayerCalcMethod.NAJAF_ARC -> R.string.calculation_method_najaf
+    PrayerCalcMethod.LEVA_QOM -> R.string.calculation_method_jafari
+    PrayerCalcMethod.TEHRAN_IGUT -> R.string.calculation_method_tehran
 }
 
 @Composable
