@@ -202,4 +202,7 @@ dependencies {
     // ---------- شبكة للتحقق من التحديثات ----------
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+
+    // ---------- اختبارات الوحدة (JVM فقط، لا تدخل في الـ APK) ----------
+    testImplementation("junit:junit:4.13.2")
 }
