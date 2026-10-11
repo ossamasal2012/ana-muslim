@@ -11,6 +11,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -35,6 +37,14 @@ class PrayerTimesViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             ensureLocationSavedIfPossible()
             refreshLoop()
+        }
+        // عند تغيير معيار الحساب من الإعدادات نعيد الحساب فوراً بدل انتظار دورة الـ 30 ثانية.
+        // drop(1) يتجاهل القيمة الأولى (الحالية) لأن refreshLoop تعرضها أصلاً.
+        viewModelScope.launch {
+            ServiceLocator.settings(application).prayerCalcMethod
+                .distinctUntilChanged()
+                .drop(1)
+                .collect { refreshOnce() }
         }
     }
 
