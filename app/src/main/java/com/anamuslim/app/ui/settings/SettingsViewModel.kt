@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.anamuslim.app.alarm.AlarmScheduler
 import com.anamuslim.app.core.ServiceLocator
+import com.anamuslim.app.data.prayertimes.PrayerCalcMethod
 import com.anamuslim.app.data.settings.QuranDisplayMode
 import com.anamuslim.app.data.settings.SettingsRepository
 import com.anamuslim.app.data.settings.TimeFormatPreference
@@ -23,7 +24,8 @@ data class SettingsUiState(
     val ishaEnabled: Boolean = true,
     val isCheckingUpdate: Boolean = false,
     val quranDisplayMode: QuranDisplayMode = QuranDisplayMode.CONTINUOUS_SCROLL,
-    val timeFormat: TimeFormatPreference = TimeFormatPreference.HOUR_12
+    val timeFormat: TimeFormatPreference = TimeFormatPreference.HOUR_12,
+    val prayerCalcMethod: PrayerCalcMethod = PrayerCalcMethod.DEFAULT
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -57,6 +59,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 _uiState.value = _uiState.value.copy(quranDisplayMode = mode, timeFormat = format)
             }
         }
+        // معيار حساب المواقيت: تجميع منفصل أيضاً حتى لا يُلمس أي منطق قائم.
+        viewModelScope.launch {
+            settings.prayerCalcMethod.collect { method ->
+                _uiState.value = _uiState.value.copy(prayerCalcMethod = method)
+            }
+        }
     }
 
     fun setPrayerEnabled(prayer: SettingsRepository.Prayer, enabled: Boolean) {
@@ -78,6 +86,17 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     /** وضع عرض القرآن: التبديل فوري لأن الشاشة تقرأ هذا الإعداد مباشرة من DataStore. */
     fun setQuranDisplayMode(mode: QuranDisplayMode) {
         viewModelScope.launch { settings.setQuranDisplayMode(mode) }
+    }
+
+    /**
+     * معيار حساب المواقيت (زوايا الفجر/المغرب): يغيّر الأوقات المعروضة نفسها، لذلك نعيد جدولة
+     * الأذان فوراً حتى تتطابق المنبهات مع الأوقات الجديدة (كما يحدث عند تفعيل/تعطيل صلاة).
+     */
+    fun setPrayerCalcMethod(method: PrayerCalcMethod) {
+        viewModelScope.launch {
+            settings.setPrayerCalcMethod(method)
+            AlarmScheduler.rescheduleAll(getApplication())
+        }
     }
 
     /** نظام 12/24 ساعة: لا يغيّر حسابات الأوقات، فقط طريقة عرضها في كل الشاشات. */
