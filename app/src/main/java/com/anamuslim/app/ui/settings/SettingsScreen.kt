@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anamuslim.app.BuildConfig
 import com.anamuslim.app.R
+import com.anamuslim.app.data.prayertimes.PrayerCalcMethod
 import com.anamuslim.app.data.settings.QuranDisplayMode
 import com.anamuslim.app.data.settings.SettingsRepository
 import com.anamuslim.app.data.settings.TimeFormatPreference
@@ -63,6 +64,32 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
                     }
                 }
             }
+
+            Divider(Modifier.padding(vertical = 12.dp))
+            SectionTitle(stringResource(R.string.settings_section_calc_method))
+            Text(
+                stringResource(R.string.settings_calc_method_desc),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            CalcMethodOptionRow(
+                label = stringResource(R.string.calc_method_najaf_title),
+                description = stringResource(R.string.calc_method_najaf_desc),
+                selected = state.prayerCalcMethod == PrayerCalcMethod.NAJAF_ARC,
+                onClick = { viewModel.setPrayerCalcMethod(PrayerCalcMethod.NAJAF_ARC) }
+            )
+            CalcMethodOptionRow(
+                label = stringResource(R.string.calc_method_leva_title),
+                description = stringResource(R.string.calc_method_leva_desc),
+                selected = state.prayerCalcMethod == PrayerCalcMethod.LEVA_QOM,
+                onClick = { viewModel.setPrayerCalcMethod(PrayerCalcMethod.LEVA_QOM) }
+            )
+            CalcMethodOptionRow(
+                label = stringResource(R.string.calc_method_tehran_title),
+                description = stringResource(R.string.calc_method_tehran_desc),
+                selected = state.prayerCalcMethod == PrayerCalcMethod.TEHRAN_IGUT,
+                onClick = { viewModel.setPrayerCalcMethod(PrayerCalcMethod.TEHRAN_IGUT) }
+            )
 
             Divider(Modifier.padding(vertical = 12.dp))
             SectionTitle(stringResource(R.string.settings_section_quran_display))
@@ -145,6 +172,29 @@ private fun PrayerToggleRow(label: String, checked: Boolean, onChange: (Boolean)
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge)
         Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+/** خيار معيار حساب: عنوان + سطر وصف صغير (الزوايا)، بنفس نمط RadioOptionRow. */
+@Composable
+private fun CalcMethodOptionRow(label: String, description: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        RadioButton(selected = selected, onClick = onClick)
+        Spacer(Modifier.width(4.dp))
+        Column {
+            Text(label, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
